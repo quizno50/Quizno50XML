@@ -1,0 +1,6 @@
+ - Figure out how to make FileString inherit from std::string and use it's
+   algorithms.
+ - Change failure to match to be std::string:npos instead of -1 which will
+   allow for better consistency between this library and the std::string
+	library.
+
