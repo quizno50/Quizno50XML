@@ -31,3 +31,7 @@ libQuizno50XML.so.*
 *.exe
 *.out
 *.app
+
+# Vim Swap Files
+.*.swo
+.*.swp
