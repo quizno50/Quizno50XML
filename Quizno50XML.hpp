@@ -2,29 +2,39 @@
 #include <vector>
 #include <string>
 
+class XMLError
+{
+	protected:
+		std::string message;
+};
+
+class NavigationError : public XMLError
+{
+	public:
+		NavigationError(std::string msg);
+	protected:
+};
+
 class Attribute
 {
 	public:
-		Attribute(long keyLocale, long keyLen, long valLocale, long valLen) :
-				keyLocale(keyLocale), keyLen(keyLen), valLocale(valLocale),
-				valLen(valLen)
+		Attribute(const std::string& key, const std::string& val) :
+				key(key), val(val)
 		{
 		}
 	private:
-		long keyLocale;
-		long keyLen;
-		long valLocale;
-		long valLen;
+		std::string key;
+		std::string val;
 };
 
 class Tag
 {
 	public:
-		Tag() : name(-1), nameLen(-1) {}
+		Tag();
 		std::vector<Tag> children;
 		std::vector<Attribute> attributes;
-		long name;
-		long nameLen;
+		std::string name;
+		Tag& operator/(const std::string& subTag);
 		enum TagType {
 			TAG_META,
 			TAG_COMMENT,
@@ -50,7 +60,7 @@ class TextNode : public Tag
 {
 };
 
-class ParseError
+class ParseError : public XMLError
 {
 	public:
 		ParseError(std::string message, long location) : message(message),

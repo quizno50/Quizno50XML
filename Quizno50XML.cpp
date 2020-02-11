@@ -1,5 +1,6 @@
 #include "Quizno50XML.hpp"
 #include "FileString.hpp"
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -15,6 +16,25 @@
 #define ALPHA_LOWER "abcdefghijklmnopqrstuvwxyz"
 #define ALPHA_UPPER "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 #define NUMBERS "0123456789"
+
+NavigationError::NavigationError(std::string msg)
+{
+	message = msg;
+}
+
+Tag::Tag() : type(TAG_NORMAL)
+{
+}
+
+Tag& Tag::operator/(const std::string& subTag)
+{
+	for (auto& child : children)
+	{
+		if (child.name == subTag)
+			return child;
+	}
+	throw NavigationError("Couldn't find child tag named \"" + subTag + "\"");
+}
 
 long eatWhiteSpace(FileString& fullCode,
 		long& currentLocale)
@@ -122,7 +142,8 @@ void parseAttributes(FileString& fullCode,
 	{
 		return;
 	}
-	attrs.push_back(Attribute(attrName, attrNameLen, attrVal, attrValLen));
+	attrs.push_back(Attribute(fullCode.substr(attrName, attrNameLen),
+			fullCode.substr(attrVal, attrValLen)));
 	eatWhiteSpace(fullCode, currentLocale);
 	parseAttributes(fullCode, currentLocale, attrs);
 }
@@ -202,21 +223,22 @@ void parseText(FileString& fullCode, long& currentLocale,
 }
 
 void parseTag(FileString& fullCode, long& currentLocale,
-		Tag& result);
+		Tag& result, bool& valid);
 
 void parseCommentTag(FileString& fullCode, long& currentLocale,
-		Tag& commentTag)
+		Tag& commentTag, bool& valid)
 {
 	long originalLocale = currentLocale;
 	long end;
 
 	if (fullCode.substr(currentLocale, 4) != "<!--")
 	{
+		valid = false;
 		return;
 	}
 
 	currentLocale += 4;
-    commentTag.name = currentLocale;
+   commentTag.name = currentLocale;
 
 	end = fullCode.find("-->", currentLocale);
 
@@ -227,9 +249,10 @@ void parseCommentTag(FileString& fullCode, long& currentLocale,
 		throw ParseError("Couldn't find comment end.", errorLocale);
 	}
 
-	currentLocale = end + 3;
-    commentTag.nameLen = end - commentTag.name;
+	commentTag.name = fullCode.substr(currentLocale, end - currentLocale);
 	commentTag.type = Tag::TAG_COMMENT;
+	currentLocale = end + 3;
+	valid = true;
 }
 
 void parseTagsAndText(FileString& fullCode,
@@ -237,6 +260,7 @@ void parseTagsAndText(FileString& fullCode,
 		long& itemsParsed)
 {
 	long textStart = -1, textEnd = -1;
+	bool valid = false;
 	Tag newTag;
 
 	if (fullCode.length() == (unsigned long)currentLocale)
@@ -244,21 +268,20 @@ void parseTagsAndText(FileString& fullCode,
 		return;
 	}
 
-	parseTag(fullCode, currentLocale, newTag);
-	if (newTag.name == -1)
+	parseTag(fullCode, currentLocale, newTag, valid);
+	if (!valid)
 	{
-		parseCommentTag(fullCode, currentLocale, newTag);
-		if (newTag.name == -1)
+		parseCommentTag(fullCode, currentLocale, newTag, valid);
+		if (!valid)
 		{
 			parseText(fullCode, currentLocale, textStart, textEnd);
-			newTag.name = textStart;
-			newTag.nameLen = textEnd;
-			newTag.type = Tag::TAG_TEXT;
-			if (newTag.name == -1)
+			if (textStart == -1)
 			{
 				// Can't parse anything... We're done here...
 				return;
 			}
+			newTag.name = fullCode.substr(textStart, textEnd);
+			newTag.type = Tag::TAG_TEXT;
 		}
 	}
 	tags.push_back(newTag);
@@ -266,14 +289,12 @@ void parseTagsAndText(FileString& fullCode,
 	parseTagsAndText(fullCode, currentLocale, tags, itemsParsed);
 }
 
-void parseTag(FileString& fullCode, long& currentLocale, Tag& result)
+void parseTag(FileString& fullCode, long& currentLocale, Tag& result,
+		bool& valid)
 {
 	long originalLocale = currentLocale;
 	long tagName, tagNameLen, endTagLen;
 	long childrenParsed = 0;
-
-	result.name = -1;
-	result.nameLen = -1;
 
 	if ((unsigned long)currentLocale == fullCode.length())
 	{
@@ -285,6 +306,7 @@ void parseTag(FileString& fullCode, long& currentLocale, Tag& result)
 	if (tagName == -1)
 	{
 		currentLocale = originalLocale;
+		valid = false;
 		return;
 	}
 	eatWhiteSpace(fullCode, currentLocale);
@@ -293,6 +315,7 @@ void parseTag(FileString& fullCode, long& currentLocale, Tag& result)
 	if (endTagLen == -1)
 	{
 		currentLocale = originalLocale;
+		valid = false;
 		return;
 	}
 
@@ -304,12 +327,13 @@ void parseTag(FileString& fullCode, long& currentLocale, Tag& result)
 		if (tagNameLen == -1)
 		{
 			currentLocale = originalLocale;
+			valid = false;
 			return;
 		}
 	}
-	result.name = tagName;
-	result.nameLen = tagNameLen;
+	result.name = fullCode.substr(tagName, tagNameLen);
 	result.type = Tag::TAG_NORMAL;
+	valid = true;
 }
 
 long readMetaChar(FileString& fullCode, long& currentLocale,
@@ -325,7 +349,7 @@ long readMetaChar(FileString& fullCode, long& currentLocale,
 }
 
 void parseMetaTag(FileString& fullCode, long& currentLocale,
-		Tag& metaTag)
+		Tag& metaTag, bool &valid)
 {
 	long originalLocale = currentLocale;
 	long tagId, tagIdLen;
@@ -334,6 +358,7 @@ void parseMetaTag(FileString& fullCode, long& currentLocale,
 
 	if ((unsigned long)currentLocale == fullCode.length())
 	{
+		valid = false;
 		return;
 	}
     readOpenTag(fullCode, currentLocale);
@@ -342,12 +367,12 @@ void parseMetaTag(FileString& fullCode, long& currentLocale,
     if (fullCode[currentLocale] == '-' && fullCode[currentLocale + 1] == '-')
     {
         // This is a comment tag, we need to bail.
+		  valid = false;
         currentLocale = originalLocale;
         return;
     }
     readIdentifier(fullCode, currentLocale, tagId, tagIdLen);
-    metaTag.name = tagId;
-    metaTag.nameLen = tagIdLen;
+    metaTag.name = fullCode.substr(tagId, tagIdLen);
     metaTag.type = Tag::TAG_META;
     eatWhiteSpace(fullCode, currentLocale);
     parseAttributes(fullCode, currentLocale, metaTag.attributes);
@@ -363,12 +388,14 @@ void parseMetaTag(FileString& fullCode, long& currentLocale,
         }
     }
     readEndTag(fullCode, currentLocale, endTagLen);
+	 valid = true;
 }
 
 void parseTags(FileString& fullCode, long& currentLocale,
 		std::vector<Tag>& allTags)
 {
 	Tag t;
+	bool valid;
 	
 	if ((unsigned long)currentLocale == fullCode.length())
 	{
@@ -376,14 +403,14 @@ void parseTags(FileString& fullCode, long& currentLocale,
 	}
 
 	eatWhiteSpace(fullCode, currentLocale);
-	parseTag(fullCode, currentLocale, t);
-	if (t.name == -1)
+	parseTag(fullCode, currentLocale, t, valid);
+	if (!valid)
 	{
-		parseMetaTag(fullCode, currentLocale, t);
-		if (t.name == -1)
+		parseMetaTag(fullCode, currentLocale, t, valid);
+		if (!valid)
 		{
-			parseCommentTag(fullCode, currentLocale, t);
-			if (t.name == -1)
+			parseCommentTag(fullCode, currentLocale, t, valid);
+			if (!valid)
 			{
 				return;
 			}
@@ -447,24 +474,5 @@ long countDocumentTags(const Document& d)
 		totalCount += countTagChildren(*i);
 	}
 	return totalCount;
-}
-
-int main(int argc, char** argv)
-{
-	std::string testData = "/home/quizno50/Downloads/reddit_rss.xml";
-	Document d;
-	long currentLocale = 0;
-
-	if (argc > 1)
-	{
-		testData = argv[1];
-	}
-
-	FileString fullCode(testData);
-	parseDocument(fullCode, currentLocale, d);
-
-	std::cout << "Parsed a document with " << countDocumentTags(d) << " tags.\n";
-
-	return 0;
 }
 
