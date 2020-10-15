@@ -18,4 +18,8 @@ install: ${Q50XML_LIB_NAME} ${Q50XML_HEADERS}
 	${INSTALL} -m 644 ${Q50XML_LIB_NAME} ${DESTDIR}/${LIB_DIR}
 	${INSTALL} -m 644 ${Q50XML_HEADERS} ${DESTDIR}/${INCLUDE_DIR}
 
-.PHONY: install
+clean:
+	rm -f ${Q50XML_OBJS}
+	rm -f ${Q50XML_LIB_NAME}
+
+.PHONY: install clean
