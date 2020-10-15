@@ -81,3 +81,8 @@ class ParseError : public XMLError
 		long location;
 };
 
+void parseDocument(FileString& fullCode, long& currentLocale,
+		Document& d);
+long countTagChildren(const Tag& t);
+long countDocumentTags(const Document& d);
+
