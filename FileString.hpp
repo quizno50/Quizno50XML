@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-class FileString
+class FileString : public std::string
 {
 	public:
 		FileString(const std::string& filename);

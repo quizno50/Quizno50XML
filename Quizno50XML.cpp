@@ -1,5 +1,4 @@
 #include "Quizno50XML.hpp"
-#include "FileString.hpp"
 #include <algorithm>
 #include <iostream>
 #include <fstream>
@@ -36,7 +35,7 @@ Tag& Tag::operator/(const std::string& subTag)
 	throw NavigationError("Couldn't find child tag named \"" + subTag + "\"");
 }
 
-long eatWhiteSpace(FileString& fullCode,
+long eatWhiteSpace(std::string& fullCode,
 		long& currentLocale)
 {
 	currentLocale = fullCode.find_first_not_of(" \t\n\r", currentLocale);
@@ -47,7 +46,7 @@ long eatWhiteSpace(FileString& fullCode,
 	return currentLocale;
 }
 
-void readIdentifier(FileString& fullCode, long& currentLocale,
+void readIdentifier(std::string& fullCode, long& currentLocale,
 		long& idStart, long& idLen)
 {
 	idStart = currentLocale;
@@ -62,7 +61,7 @@ void readIdentifier(FileString& fullCode, long& currentLocale,
 	}
 }
 
-long readSingleCharacterToken(FileString& fullCode,
+long readSingleCharacterToken(std::string& fullCode,
 		long& currentLocale, char tokenChar)
 {
 	long originalLocale = currentLocale;
@@ -79,18 +78,18 @@ long readSingleCharacterToken(FileString& fullCode,
 	return originalLocale;
 }
 
-long readOpenTag(FileString& fullCode, long& currentLocale)
+long readOpenTag(std::string& fullCode, long& currentLocale)
 {
 	return readSingleCharacterToken(fullCode, currentLocale, '<');
 }
 
-long readAssignment(FileString& fullCode,
+long readAssignment(std::string& fullCode,
 		long& currentLocale)
 {
 	return readSingleCharacterToken(fullCode, currentLocale, '=');
 }
 
-void readValue(FileString& fullCode, long& currentLocale,
+void readValue(std::string& fullCode, long& currentLocale,
 		long& valueLocale, long& valueLen)
 {
 	long originalLocale = currentLocale;
@@ -119,7 +118,7 @@ void readValue(FileString& fullCode, long& currentLocale,
 	valueLen = endLocale - valueLocale;
 }
 
-void parseAttribute(FileString& fullCode, long& currentLocale,
+void parseAttribute(std::string& fullCode, long& currentLocale,
 		long& attrKey, long& attrKeyLen,
 		long& attrVal, long& attrValLen)
 {
@@ -132,7 +131,7 @@ void parseAttribute(FileString& fullCode, long& currentLocale,
 	readValue(fullCode, currentLocale, attrVal, attrValLen);
 }
 
-void parseAttributes(FileString& fullCode,
+void parseAttributes(std::string& fullCode,
 		long& currentLocale, std::vector<Attribute>& attrs)
 {
 	long attrVal, attrValLen, attrName, attrNameLen;
@@ -148,7 +147,7 @@ void parseAttributes(FileString& fullCode,
 	parseAttributes(fullCode, currentLocale, attrs);
 }
 
-void readEndTag(FileString& fullCode, long& currentLocale,
+void readEndTag(std::string& fullCode, long& currentLocale,
 		long& endTagLen)
 {
 	long originalLocale = currentLocale;
@@ -170,7 +169,7 @@ void readEndTag(FileString& fullCode, long& currentLocale,
 	}
 }
 
-void parseCloseTag(FileString& fullCode, long& currentLocale,
+void parseCloseTag(std::string& fullCode, long& currentLocale,
 		long& tagName, long& tagNameLen)
 {
 	long originalLocale = currentLocale;
@@ -207,7 +206,7 @@ void parseCloseTag(FileString& fullCode, long& currentLocale,
 	++currentLocale;
 }
 
-void parseText(FileString& fullCode, long& currentLocale,
+void parseText(std::string& fullCode, long& currentLocale,
 		long& textStart, long& textLen)
 {
 	long end = fullCode.find("<", currentLocale);
@@ -222,10 +221,10 @@ void parseText(FileString& fullCode, long& currentLocale,
 	currentLocale += textLen;
 }
 
-void parseTag(FileString& fullCode, long& currentLocale,
+void parseTag(std::string& fullCode, long& currentLocale,
 		Tag& result, bool& valid);
 
-void parseCommentTag(FileString& fullCode, long& currentLocale,
+void parseCommentTag(std::string& fullCode, long& currentLocale,
 		Tag& commentTag, bool& valid)
 {
 	long originalLocale = currentLocale;
@@ -255,7 +254,7 @@ void parseCommentTag(FileString& fullCode, long& currentLocale,
 	valid = true;
 }
 
-void parseTagsAndText(FileString& fullCode,
+void parseTagsAndText(std::string& fullCode,
 		long& currentLocale, std::vector<Tag>& tags,
 		long& itemsParsed)
 {
@@ -289,7 +288,7 @@ void parseTagsAndText(FileString& fullCode,
 	parseTagsAndText(fullCode, currentLocale, tags, itemsParsed);
 }
 
-void parseTag(FileString& fullCode, long& currentLocale, Tag& result,
+void parseTag(std::string& fullCode, long& currentLocale, Tag& result,
 		bool& valid)
 {
 	long originalLocale = currentLocale;
@@ -336,7 +335,7 @@ void parseTag(FileString& fullCode, long& currentLocale, Tag& result,
 	valid = true;
 }
 
-long readMetaChar(FileString& fullCode, long& currentLocale,
+long readMetaChar(std::string& fullCode, long& currentLocale,
 		char& metaChar)
 {
 	metaChar = '?';
@@ -348,7 +347,7 @@ long readMetaChar(FileString& fullCode, long& currentLocale,
 	return currentLocale;
 }
 
-void parseMetaTag(FileString& fullCode, long& currentLocale,
+void parseMetaTag(std::string& fullCode, long& currentLocale,
 		Tag& metaTag, bool &valid)
 {
 	long originalLocale = currentLocale;
@@ -391,7 +390,7 @@ void parseMetaTag(FileString& fullCode, long& currentLocale,
 	 valid = true;
 }
 
-void parseTags(FileString& fullCode, long& currentLocale,
+void parseTags(std::string& fullCode, long& currentLocale,
 		std::vector<Tag>& allTags)
 {
 	Tag t;
@@ -420,7 +419,52 @@ void parseTags(FileString& fullCode, long& currentLocale,
 	parseTags(fullCode, currentLocale, allTags);
 }
 
-void parseDocument(FileString& fullCode, long& currentLocale,
+Tag::operator std::string() const
+{
+	std::string beginString;
+	std::string endString;
+	std::string attrString;
+	std::string childString;
+	std::map<TagType, std::string> tagOpening { {TAG_META, "<?"},
+			{TAG_COMMENT, "<!--"},
+			{TAG_TEXT, ""},
+			{TAG_NORMAL, "<"} };
+	std::map<TagType, std::string> tagClosing { {TAG_META, "?>"},
+			{TAG_COMMENT, "-->"},
+			{TAG_NORMAL, ">"} };
+
+	if (type == TAG_TEXT)
+	{
+		return name;
+	}
+	else
+	{
+		if (type == TAG_NORMAL || type == TAG_META)
+		{
+			for (const Attribute& a : attributes)
+			{
+				attrString += " " + a.key + "=\"" + a.val + "\"";
+			}
+
+			for (const Tag& c : children)
+			{
+				childString += (std::string)c;
+			}
+		}
+		if (type == TAG_NORMAL && children.size() > 0)
+		{
+			endString = "</" + name + ">";
+		}
+
+		beginString = tagOpening[type] + name + attrString +
+				(children.size() == 0 && type == TAG_NORMAL ? "/" : "") + 
+				tagClosing[type];
+	}
+
+	return beginString + childString + endString;
+}
+
+void parseDocument(std::string& fullCode, long& currentLocale,
 		Document& d)
 {
 	eatWhiteSpace(fullCode, currentLocale);

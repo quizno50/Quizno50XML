@@ -22,7 +22,6 @@ class Attribute
 				key(key), val(val)
 		{
 		}
-	private:
 		std::string key;
 		std::string val;
 };
@@ -35,6 +34,7 @@ class Tag
 		std::vector<Attribute> attributes;
 		std::string name;
 		Tag& operator/(const std::string& subTag);
+		operator std::string() const;
 		enum TagType {
 			TAG_META,
 			TAG_COMMENT,
@@ -81,7 +81,7 @@ class ParseError : public XMLError
 		long location;
 };
 
-void parseDocument(FileString& fullCode, long& currentLocale,
+void parseDocument(std::string& fullCode, long& currentLocale,
 		Document& d);
 long countTagChildren(const Tag& t);
 long countDocumentTags(const Document& d);
