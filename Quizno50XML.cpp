@@ -132,7 +132,7 @@ void parseAttribute(std::string& fullCode, long& currentLocale,
 }
 
 void parseAttributes(std::string& fullCode,
-		long& currentLocale, std::vector<Attribute>& attrs)
+		long& currentLocale, std::map<std::string, std::string>& attrs)
 {
 	long attrVal, attrValLen, attrName, attrNameLen;
 	parseAttribute(fullCode, currentLocale, attrName, attrNameLen,
@@ -141,7 +141,7 @@ void parseAttributes(std::string& fullCode,
 	{
 		return;
 	}
-	attrs.push_back(Attribute(fullCode.substr(attrName, attrNameLen),
+	attrs.emplace(Attribute(fullCode.substr(attrName, attrNameLen),
 			fullCode.substr(attrVal, attrValLen)));
 	eatWhiteSpace(fullCode, currentLocale);
 	parseAttributes(fullCode, currentLocale, attrs);
@@ -443,7 +443,7 @@ Tag::operator std::string() const
 		{
 			for (const Attribute& a : attributes)
 			{
-				attrString += " " + a.key + "=\"" + a.val + "\"";
+				attrString += " " + a.first + "=\"" + a.second + "\"";
 			}
 
 			for (const Tag& c : children)

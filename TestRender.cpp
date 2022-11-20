@@ -46,7 +46,7 @@ bool testRenderMetaWithAttribute(void)
 
 	metaTag.name = "xml";
 	metaTag.type = Tag::TAG_META;
-	metaTag.attributes.push_back(Attribute("version", "1.0"));
+	metaTag.attributes.emplace(Attribute("version", "1.0"));
 
 	renderedTag = (std::string)metaTag;
 
@@ -60,12 +60,12 @@ bool testRenderMetaWithAttributes(void)
 
 	metaTag.name = "xml";
 	metaTag.type = Tag::TAG_META;
-	metaTag.attributes.push_back(Attribute("version", "1.0"));
-	metaTag.attributes.push_back(Attribute("encoding", "UTF-8"));
+	metaTag.attributes.emplace(Attribute("version", "1.0"));
+	metaTag.attributes.emplace(Attribute("encoding", "UTF-8"));
 
 	renderedTag = (std::string)metaTag;
 
-	TEST_FINALIZE(renderedTag, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+	TEST_FINALIZE(renderedTag, "<?xml encoding=\"UTF-8\" version=\"1.0\"?>");
 }
 
 bool testRenderText(void)
@@ -99,7 +99,7 @@ bool testRenderNormalWithAttribute(void)
 
 	t.type = Tag::TAG_NORMAL;
 	t.name = "foo";
-	t.attributes.push_back(Attribute("bar", "baz"));
+	t.attributes.emplace(Attribute("bar", "baz"));
 
 	renderedTag = (std::string)t;
 	TEST_FINALIZE(renderedTag, "<foo bar=\"baz\"/>");
@@ -112,8 +112,8 @@ bool testRenderNormalWithAttributes(void)
 
 	t.type = Tag::TAG_NORMAL;
 	t.name = "foo";
-	t.attributes.push_back(Attribute("bar", "baz"));
-	t.attributes.push_back(Attribute("fizz", "buzz"));
+	t.attributes.emplace(Attribute("bar", "baz"));
+	t.attributes.emplace(Attribute("fizz", "buzz"));
 
 	renderedTag = (std::string)t;
 	TEST_FINALIZE(renderedTag, "<foo bar=\"baz\" fizz=\"buzz\"/>");
@@ -164,14 +164,14 @@ bool testRenderNormalWithAttributesAndChildren(void)
 
 	t.type = Tag::TAG_NORMAL;
 	t.name = "foo";
-	t.attributes.push_back(Attribute("one", "1"));
-	t.attributes.push_back(Attribute("two", "2"));
+	t.attributes.emplace(Attribute("one", "1"));
+	t.attributes.emplace(Attribute("two", "2"));
 	ct.type = Tag::TAG_TEXT;
 	ct.name = "bar";
 	ctt.type = Tag::TAG_NORMAL;
 	ctt.name = "baz";
-	ctt.attributes.push_back(Attribute("one", "1"));
-	ctt.attributes.push_back(Attribute("two", "2"));
+	ctt.attributes.emplace(Attribute("one", "1"));
+	ctt.attributes.emplace(Attribute("two", "2"));
 	t.children.push_back(ct);
 	t.children.push_back(ctt);
 
@@ -199,9 +199,10 @@ int main(void)
 	for (auto t : tests)
 	{
 		result = (*t)();
-		std::cout << (result ? "T" : "F");
+		std::cout << std::boolalpha << result << " ";
 		finalResult |= result;
 	}
+	std::cout << "\n";
 
 	return (finalResult == true ? 0 : 1);
 }

@@ -1,4 +1,4 @@
-CXXFLAGS?=-std=c++11 -Wall -O2 -fPIC
+CXXFLAGS?=-std=c++11 -Wall -g -fPIC
 LDFLAGS=-shared
 DESTDIR?=/usr/local
 INCLUDE_DIR?=include
@@ -21,6 +21,7 @@ install: ${Q50XML_LIB_NAME} ${Q50XML_HEADERS}
 
 clean:
 	rm -f ${Q50XML_OBJS}
+	rm -f ${TEST_OBJS}
 	rm -f ${Q50XML_LIB_NAME}
 	rm -f test
 

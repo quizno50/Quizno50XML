@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <map>
 #include <string>
 
 class XMLError
@@ -15,23 +16,14 @@ class NavigationError : public XMLError
 	protected:
 };
 
-class Attribute
-{
-	public:
-		Attribute(const std::string& key, const std::string& val) :
-				key(key), val(val)
-		{
-		}
-		std::string key;
-		std::string val;
-};
+typedef std::pair<std::string, std::string> Attribute;
 
 class Tag
 {
 	public:
 		Tag();
 		std::vector<Tag> children;
-		std::vector<Attribute> attributes;
+		std::map<std::string, std::string> attributes;
 		std::string name;
 		Tag& operator/(const std::string& subTag);
 		operator std::string() const;
