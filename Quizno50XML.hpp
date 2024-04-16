@@ -2,6 +2,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include "FileString.hpp"
 
 class XMLError
 {
@@ -73,7 +74,7 @@ class ParseError : public XMLError
 		long location;
 };
 
-void parseDocument(std::string& fullCode, long& currentLocale,
+void parseDocument(FileString& fullCode, long& currentLocale,
 		Document& d);
 long countTagChildren(const Tag& t);
 long countDocumentTags(const Document& d);

@@ -12,6 +12,7 @@ class FileString : public std::string
 		long find_first_not_of(const char* notOk,
 				long startPosition = 0);
 		long find(const char* toFind, long startPosition = 0);
+		long find(char toFind, long startPosition = 0);
 		char operator[](long offset);
 
 	private:

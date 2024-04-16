@@ -25,7 +25,7 @@ Tag::Tag() : type(TAG_NORMAL)
 {
 }
 
-Tag& Tag::operator/(const std::string& subTag)
+Tag& Tag::operator/(std::string const& subTag)
 {
 	for (auto& child : children)
 	{
@@ -35,7 +35,7 @@ Tag& Tag::operator/(const std::string& subTag)
 	throw NavigationError("Couldn't find child tag named \"" + subTag + "\"");
 }
 
-long eatWhiteSpace(std::string& fullCode,
+long eatWhiteSpace(FileString& fullCode,
 		long& currentLocale)
 {
 	currentLocale = fullCode.find_first_not_of(" \t\n\r", currentLocale);
@@ -46,7 +46,7 @@ long eatWhiteSpace(std::string& fullCode,
 	return currentLocale;
 }
 
-void readIdentifier(std::string& fullCode, long& currentLocale,
+void readIdentifier(FileString& fullCode, long& currentLocale,
 		long& idStart, long& idLen)
 {
 	idStart = currentLocale;
@@ -61,7 +61,7 @@ void readIdentifier(std::string& fullCode, long& currentLocale,
 	}
 }
 
-long readSingleCharacterToken(std::string& fullCode,
+long readSingleCharacterToken(FileString& fullCode,
 		long& currentLocale, char tokenChar)
 {
 	long originalLocale = currentLocale;
@@ -78,39 +78,41 @@ long readSingleCharacterToken(std::string& fullCode,
 	return originalLocale;
 }
 
-long readOpenTag(std::string& fullCode, long& currentLocale)
+long readOpenTag(FileString& fullCode, long& currentLocale)
 {
 	return readSingleCharacterToken(fullCode, currentLocale, '<');
 }
 
-long readAssignment(std::string& fullCode,
+long readAssignment(FileString& fullCode,
 		long& currentLocale)
 {
 	return readSingleCharacterToken(fullCode, currentLocale, '=');
 }
 
-void readValue(std::string& fullCode, long& currentLocale,
+void readValue(FileString& fullCode, long& currentLocale,
 		long& valueLocale, long& valueLen)
 {
 	long originalLocale = currentLocale;
 	long endLocale = currentLocale;
 	bool firstGo = true;
+	char quote_type = '\0';
 
 	if (fullCode[currentLocale] == '"' || fullCode[currentLocale] == '\'')
 	{
+		quote_type = fullCode[currentLocale];
 		++currentLocale;
 	}
 	valueLocale = currentLocale;
 	while ((endLocale > 0 && firstGo)
 			|| fullCode.substr(currentLocale - 1, 2) == "\\\"")
 	{
-		endLocale = fullCode.find_first_of("\"'", currentLocale);
-        if ((unsigned long)endLocale == std::string::npos)
-        {
-            currentLocale = originalLocale;
-            valueLocale = -1;
-            valueLen = -1;
-            return;
+		endLocale = fullCode.find(quote_type, currentLocale);
+		if ((unsigned long)endLocale == std::string::npos)
+		{
+			currentLocale = originalLocale;
+			valueLocale = -1;
+			valueLen = -1;
+			return;
 		}
 		currentLocale = endLocale + 1;
 		firstGo = false;
@@ -118,7 +120,7 @@ void readValue(std::string& fullCode, long& currentLocale,
 	valueLen = endLocale - valueLocale;
 }
 
-void parseAttribute(std::string& fullCode, long& currentLocale,
+void parseAttribute(FileString& fullCode, long& currentLocale,
 		long& attrKey, long& attrKeyLen,
 		long& attrVal, long& attrValLen)
 {
@@ -126,28 +128,31 @@ void parseAttribute(std::string& fullCode, long& currentLocale,
 	readIdentifier(fullCode, currentLocale, attrKey, attrKeyLen);
 	if (attrKey == -1) return;
 	eatWhiteSpace(fullCode, currentLocale);
-	readAssignment(fullCode, currentLocale);
-	eatWhiteSpace(fullCode, currentLocale);
-	readValue(fullCode, currentLocale, attrVal, attrValLen);
+	if (readAssignment(fullCode, currentLocale) != -1)
+	{
+		eatWhiteSpace(fullCode, currentLocale);
+		readValue(fullCode, currentLocale, attrVal, attrValLen);
+	}
 }
 
-void parseAttributes(std::string& fullCode,
+void parseAttributes(FileString& fullCode,
 		long& currentLocale, std::map<std::string, std::string>& attrs)
 {
 	long attrVal, attrValLen, attrName, attrNameLen;
 	parseAttribute(fullCode, currentLocale, attrName, attrNameLen,
 			attrVal, attrValLen);
-	if (attrName == -1)
+	while (attrName != -1)
 	{
-		return;
+		attrs.emplace(Attribute(fullCode.substr(attrName, attrNameLen),
+				attrVal == -1 ? "" : fullCode.substr(attrVal, attrValLen)));
+		attrVal = attrValLen = attrName = attrNameLen = -1;
+		eatWhiteSpace(fullCode, currentLocale);
+		parseAttribute(fullCode, currentLocale, attrName, attrNameLen,
+				attrVal, attrValLen);
 	}
-	attrs.emplace(Attribute(fullCode.substr(attrName, attrNameLen),
-			fullCode.substr(attrVal, attrValLen)));
-	eatWhiteSpace(fullCode, currentLocale);
-	parseAttributes(fullCode, currentLocale, attrs);
 }
 
-void readEndTag(std::string& fullCode, long& currentLocale,
+void readEndTag(FileString& fullCode, long& currentLocale,
 		long& endTagLen)
 {
 	long originalLocale = currentLocale;
@@ -169,7 +174,7 @@ void readEndTag(std::string& fullCode, long& currentLocale,
 	}
 }
 
-void parseCloseTag(std::string& fullCode, long& currentLocale,
+void parseCloseTag(FileString& fullCode, long& currentLocale,
 		long& tagName, long& tagNameLen)
 {
 	long originalLocale = currentLocale;
@@ -206,7 +211,7 @@ void parseCloseTag(std::string& fullCode, long& currentLocale,
 	++currentLocale;
 }
 
-void parseText(std::string& fullCode, long& currentLocale,
+void parseText(FileString& fullCode, long& currentLocale,
 		long& textStart, long& textLen)
 {
 	long end = fullCode.find("<", currentLocale);
@@ -221,10 +226,10 @@ void parseText(std::string& fullCode, long& currentLocale,
 	currentLocale += textLen;
 }
 
-void parseTag(std::string& fullCode, long& currentLocale,
+void parseTag(FileString& fullCode, long& currentLocale,
 		Tag& result, bool& valid);
 
-void parseCommentTag(std::string& fullCode, long& currentLocale,
+void parseCommentTag(FileString& fullCode, long& currentLocale,
 		Tag& commentTag, bool& valid)
 {
 	long originalLocale = currentLocale;
@@ -237,7 +242,7 @@ void parseCommentTag(std::string& fullCode, long& currentLocale,
 	}
 
 	currentLocale += 4;
-   commentTag.name = currentLocale;
+	commentTag.name = currentLocale;
 
 	end = fullCode.find("-->", currentLocale);
 
@@ -254,41 +259,45 @@ void parseCommentTag(std::string& fullCode, long& currentLocale,
 	valid = true;
 }
 
-void parseTagsAndText(std::string& fullCode,
+void parseTagsAndText(FileString& fullCode,
 		long& currentLocale, std::vector<Tag>& tags,
 		long& itemsParsed)
 {
 	long textStart = -1, textEnd = -1;
-	bool valid = false;
-	Tag newTag;
+	bool valid = false, keep_going = true;
 
-	if (fullCode.length() == (unsigned long)currentLocale)
-	{
-		return;
-	}
+	while (keep_going) {
+		valid = false;
+		Tag newTag;
+		if (fullCode.length() == (unsigned long)currentLocale)
+		{
+			keep_going = false;
+			continue;
+		}
 
-	parseTag(fullCode, currentLocale, newTag, valid);
-	if (!valid)
-	{
-		parseCommentTag(fullCode, currentLocale, newTag, valid);
+		parseTag(fullCode, currentLocale, newTag, valid);
 		if (!valid)
 		{
-			parseText(fullCode, currentLocale, textStart, textEnd);
-			if (textStart == -1)
+			parseCommentTag(fullCode, currentLocale, newTag, valid);
+			if (!valid)
 			{
-				// Can't parse anything... We're done here...
-				return;
+				parseText(fullCode, currentLocale, textStart, textEnd);
+				if (textStart == -1)
+				{
+					// Can't parse anything... We're done here...
+					keep_going = false;
+					continue;
+				}
+				newTag.name = fullCode.substr(textStart, textEnd);
+				newTag.type = Tag::TAG_TEXT;
 			}
-			newTag.name = fullCode.substr(textStart, textEnd);
-			newTag.type = Tag::TAG_TEXT;
 		}
+		tags.push_back(newTag);
+		++itemsParsed;
 	}
-	tags.push_back(newTag);
-	++itemsParsed;
-	parseTagsAndText(fullCode, currentLocale, tags, itemsParsed);
 }
 
-void parseTag(std::string& fullCode, long& currentLocale, Tag& result,
+void parseTag(FileString& fullCode, long& currentLocale, Tag& result,
 		bool& valid)
 {
 	long originalLocale = currentLocale;
@@ -335,7 +344,7 @@ void parseTag(std::string& fullCode, long& currentLocale, Tag& result,
 	valid = true;
 }
 
-long readMetaChar(std::string& fullCode, long& currentLocale,
+long readMetaChar(FileString& fullCode, long& currentLocale,
 		char& metaChar)
 {
 	metaChar = '?';
@@ -347,7 +356,7 @@ long readMetaChar(std::string& fullCode, long& currentLocale,
 	return currentLocale;
 }
 
-void parseMetaTag(std::string& fullCode, long& currentLocale,
+void parseMetaTag(FileString& fullCode, long& currentLocale,
 		Tag& metaTag, bool &valid)
 {
 	long originalLocale = currentLocale;
@@ -360,37 +369,37 @@ void parseMetaTag(std::string& fullCode, long& currentLocale,
 		valid = false;
 		return;
 	}
-    readOpenTag(fullCode, currentLocale);
-    readMetaChar(fullCode, currentLocale, metaChar);
-    // Verify this isn't a comment tag.
-    if (fullCode[currentLocale] == '-' && fullCode[currentLocale + 1] == '-')
-    {
-        // This is a comment tag, we need to bail.
-		  valid = false;
-        currentLocale = originalLocale;
-        return;
-    }
-    readIdentifier(fullCode, currentLocale, tagId, tagIdLen);
-    metaTag.name = fullCode.substr(tagId, tagIdLen);
-    metaTag.type = Tag::TAG_META;
-    eatWhiteSpace(fullCode, currentLocale);
-    parseAttributes(fullCode, currentLocale, metaTag.attributes);
-    eatWhiteSpace(fullCode, currentLocale);
-    if (metaChar == '?')
-    {
-        readMetaChar(fullCode, currentLocale, metaChar);
-        if (metaChar != '?')
-        {
-            long errorLocale = currentLocale;
-            currentLocale = originalLocale;
-            throw ParseError("Expected '?' metachar.", errorLocale);
-        }
-    }
-    readEndTag(fullCode, currentLocale, endTagLen);
-	 valid = true;
+	readOpenTag(fullCode, currentLocale);
+	readMetaChar(fullCode, currentLocale, metaChar);
+	// Verify this isn't a comment tag.
+	if (fullCode[currentLocale] == '-' && fullCode[currentLocale + 1] == '-')
+	{
+		// This is a comment tag, we need to bail.
+		valid = false;
+		currentLocale = originalLocale;
+		return;
+	}
+	readIdentifier(fullCode, currentLocale, tagId, tagIdLen);
+	metaTag.name = fullCode.substr(tagId, tagIdLen);
+	metaTag.type = Tag::TAG_META;
+	eatWhiteSpace(fullCode, currentLocale);
+	parseAttributes(fullCode, currentLocale, metaTag.attributes);
+	eatWhiteSpace(fullCode, currentLocale);
+	if (metaChar == '?')
+	{
+		readMetaChar(fullCode, currentLocale, metaChar);
+		if (metaChar != '?')
+		{
+			long errorLocale = currentLocale;
+			currentLocale = originalLocale;
+			throw ParseError("Expected '?' metachar.", errorLocale);
+		}
+	}
+	readEndTag(fullCode, currentLocale, endTagLen);
+	valid = true;
 }
 
-void parseTags(std::string& fullCode, long& currentLocale,
+void parseTags(FileString& fullCode, long& currentLocale,
 		std::vector<Tag>& allTags)
 {
 	Tag t;
@@ -441,7 +450,7 @@ Tag::operator std::string() const
 	{
 		if (type == TAG_NORMAL || type == TAG_META)
 		{
-			for (const Attribute& a : attributes)
+			for (const std::pair<const std::string, std::string>& a : attributes)
 			{
 				attrString += " " + a.first + "=\"" + a.second + "\"";
 			}
@@ -464,14 +473,14 @@ Tag::operator std::string() const
 	return beginString + childString + endString;
 }
 
-void parseDocument(std::string& fullCode, long& currentLocale,
+void parseDocument(FileString& fullCode, long& currentLocale,
 		Document& d)
 {
 	eatWhiteSpace(fullCode, currentLocale);
 	parseTags(fullCode, currentLocale, d.tags);
 }
 
-std::string readEntireFile(std::string& path)
+std::string readEntireFile(std::string const& path)
 {
 	std::string retVal;
 	std::string line;

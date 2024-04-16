@@ -7,6 +7,7 @@ FileString::FileString(const std::string& filename)
 {
 	struct stat s;
 
+	currentBlock = -1;
 	if (stat(filename.c_str(), &s) != 0)
 	{
 		throw IOError();
@@ -126,6 +127,23 @@ long FileString::find(const char* toFind,
 	result += pos;
 	return result;
 }
+
+long FileString::find(char toFind, long startPosition)
+{
+	long result = std::string::npos, pos = startPosition;
+	while (result == std::string::npos && pos < filesize)
+	{
+		std::string buf = this->substr(pos, 8192);
+		result = buf.find(toFind);
+		if (result == std::string::npos)
+		{
+			pos += 8192;
+		}
+	}
+	result += pos;
+	return result;
+}
+
 
 char FileString::operator[](long offset)
 {
