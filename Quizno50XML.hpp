@@ -17,15 +17,15 @@ class NavigationError : public XMLError
 	protected:
 };
 
-typedef std::pair<std::string, std::string> Attribute;
+typedef std::pair<StringRef, StringRef> Attribute;
 
 class Tag
 {
 	public:
 		Tag();
 		std::vector<Tag> children;
-		std::map<std::string, std::string> attributes;
-		std::string name;
+		std::map<StringRef, StringRef> attributes;
+		StringRef name;
 		Tag& operator/(const std::string& subTag);
 		operator std::string() const;
 		enum TagType {
@@ -76,6 +76,6 @@ class ParseError : public XMLError
 
 void parseDocument(FileString& fullCode, long& currentLocale,
 		Document& d);
-long countTagChildren(const Tag& t);
-long countDocumentTags(const Document& d);
+size_t countTagChildren(const Tag& t);
+size_t countDocumentTags(const Document& d);
 

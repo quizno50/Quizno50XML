@@ -3,6 +3,30 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+StringRef::StringRef() : _fs(nullptr), _start(0), _len(0) {}
+StringRef::StringRef(FileString* fs, size_t s, size_t l) {
+	_fs = fs;
+	_start = s;
+	_len = l;
+}
+
+StringRef::operator std::string() const {
+	if (_fs != nullptr) {
+		return _fs->substr(_start, _len);
+	} else { 
+		return "";
+	}
+}
+
+bool StringRef::operator<(StringRef const& rhs) const {
+	return _fs < rhs._fs and _start < rhs._start and _len < rhs._len;
+}
+
+bool StringRef::operator==(StringRef const& rhs) const {
+	return _fs == rhs._fs and _start == rhs._start and _len == rhs._len;
+}
+
+
 FileString::FileString(const std::string& filename)
 {
 	struct stat s;
@@ -21,11 +45,11 @@ FileString::FileString(const std::string& filename)
 	}
 }
 
-std::string FileString::substr(long pos, long len)
+std::string FileString::substr(size_t pos, size_t len)
 {
 	char* buffer = nullptr;
-	long blkNum = pos / 8192;
-	long nextBlock = (blkNum + 1) * 8192;
+	size_t blkNum = pos / 8192;
+	size_t nextBlock = (blkNum + 1) * 8192;
 	std::string retStr;
 
 	if (pos < 0 || len < 0)
@@ -57,7 +81,7 @@ std::string FileString::substr(long pos, long len)
 	if (pos + len > nextBlock)
 	{
 		// Read in everything necessary after the block boundry.
-		long readSize = pos + len - nextBlock;
+		size_t readSize = pos + len - nextBlock;
 		char* buffer = new char[readSize];
 		fseek(this->inFile, nextBlock, SEEK_SET);
 		if (fread(buffer, readSize, 1, this->inFile) == 0
@@ -72,15 +96,15 @@ std::string FileString::substr(long pos, long len)
 	return retStr;
 }
 
-unsigned long FileString::length(void) const
+size_t FileString::length(void) const
 {
 	return filesize;
 }
 
-long FileString::find_first_of(const char* ok,
-		long startPosition)
+size_t FileString::find_first_of(const char* ok,
+		size_t startPosition)
 {
-	long result = std::string::npos, pos = startPosition;
+	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
 		std::string buf = this->substr(pos, 8192);
@@ -94,10 +118,10 @@ long FileString::find_first_of(const char* ok,
 	return result;
 }
 
-long FileString::find_first_not_of(const char* notOk,
-		long startPosition)
+size_t FileString::find_first_not_of(const char* notOk,
+		size_t startPosition)
 {
-	long result = std::string::npos, pos = startPosition;
+	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
 		std::string buf = this->substr(pos, 8192);
@@ -111,10 +135,10 @@ long FileString::find_first_not_of(const char* notOk,
 	return result;
 }
 
-long FileString::find(const char* toFind,
-		long startPosition)
+size_t FileString::find(const char* toFind,
+		size_t startPosition)
 {
-	long result = std::string::npos, pos = startPosition;
+	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
 		std::string buf = this->substr(pos, 8192);
@@ -128,9 +152,9 @@ long FileString::find(const char* toFind,
 	return result;
 }
 
-long FileString::find(char toFind, long startPosition)
+size_t FileString::find(char toFind, size_t startPosition)
 {
-	long result = std::string::npos, pos = startPosition;
+	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
 		std::string buf = this->substr(pos, 8192);
@@ -145,7 +169,7 @@ long FileString::find(char toFind, long startPosition)
 }
 
 
-char FileString::operator[](long offset)
+char FileString::operator[](size_t offset)
 {
 	return this->substr(offset, 1)[0];
 }
