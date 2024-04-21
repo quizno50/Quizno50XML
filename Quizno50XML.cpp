@@ -25,11 +25,15 @@ Tag::Tag() : type(TAG_NORMAL)
 {
 }
 
+Tag::~Tag()
+{
+}
+
 Tag& Tag::operator/(std::string const& subTag)
 {
 	for (auto& child : children)
 	{
-		if (static_cast<std::string>(child.name) == subTag)
+		if (static_cast<std::string>(*child.name) == subTag)
 			return child;
 	}
 	throw NavigationError("Couldn't find child tag named \"" + subTag + "\"");
@@ -51,7 +55,7 @@ void readIdentifier(FileString& fullCode, size_t& currentLocale,
 {
 	idStart = currentLocale;
 	currentLocale = fullCode.find_first_not_of(ALPHA_UPPER ALPHA_LOWER
-			NUMBERS "_-:", currentLocale);
+			NUMBERS "_-;:.~", currentLocale);
 	idLen = currentLocale - idStart;
 	if (idLen <= 0)
 	{
@@ -104,7 +108,8 @@ void readValue(FileString& fullCode, size_t& currentLocale,
 	}
 	valueLocale = currentLocale;
 	while ((endLocale > 0 && firstGo)
-			|| fullCode.substr(currentLocale - 1, 2) == "\\\"")
+			|| static_cast<std::string>(*fullCode.substr(currentLocale - 1, 2)) ==
+			std::string("\\\""))
 	{
 		endLocale = fullCode.find(quote_type, currentLocale);
 		if (endLocale == std::string::npos)
@@ -136,16 +141,17 @@ void parseAttribute(FileString& fullCode, size_t& currentLocale,
 }
 
 void parseAttributes(FileString& fullCode,
-		size_t& currentLocale, std::map<StringRef, StringRef>& attrs)
+		size_t& currentLocale, std::map<std::string, std::string>& attrs)
 {
 	size_t attrVal, attrValLen, attrName, attrNameLen;
 	parseAttribute(fullCode, currentLocale, attrName, attrNameLen,
 			attrVal, attrValLen);
 	while (attrName != std::string::npos)
 	{
-		attrs.emplace(Attribute(StringRef(&fullCode, attrName, attrNameLen),
-				attrVal == std::string::npos ? StringRef() : StringRef(&fullCode,
-				attrVal, attrValLen)));
+		attrs.emplace(Attribute(*fullCode.substr(attrName, attrNameLen),
+				attrVal == std::string::npos ? "" :
+				static_cast<std::string>(*fullCode.substr(attrVal,
+				attrValLen))));
 		attrVal = attrValLen = attrName = attrNameLen = std::string::npos;
 		eatWhiteSpace(fullCode, currentLocale);
 		parseAttribute(fullCode, currentLocale, attrName, attrNameLen,
@@ -236,7 +242,7 @@ void parseCommentTag(FileString& fullCode, size_t& currentLocale,
 	size_t originalLocale = currentLocale;
 	size_t end;
 
-	if (fullCode.substr(currentLocale, 4) != "<!--")
+	if (static_cast<std::string>(*fullCode.substr(currentLocale, 4)) != "<!--")
 	{
 		valid = false;
 		return;
@@ -253,7 +259,8 @@ void parseCommentTag(FileString& fullCode, size_t& currentLocale,
 		throw ParseError("Couldn't find comment end.", errorLocale);
 	}
 
-	commentTag.name = StringRef(&fullCode, currentLocale, end - currentLocale);
+	commentTag.name = std::make_shared<StringRef>(&fullCode, currentLocale,
+			end - currentLocale);
 	commentTag.type = Tag::TAG_COMMENT;
 	currentLocale = end + 3;
 	valid = true;
@@ -288,7 +295,7 @@ void parseTagsAndText(FileString& fullCode,
 					keep_going = false;
 					continue;
 				}
-				newTag.name = StringRef(&fullCode, textStart, textEnd);
+				newTag.name = fullCode.substr(textStart, textEnd);
 				newTag.type = Tag::TAG_TEXT;
 			}
 		}
@@ -339,7 +346,7 @@ void parseTag(FileString& fullCode, size_t& currentLocale, Tag& result,
 			return;
 		}
 	}
-	result.name = StringRef(&fullCode, tagName, tagNameLen);
+	result.name = std::make_shared<StringRef>(&fullCode, tagName, tagNameLen);
 	result.type = Tag::TAG_NORMAL;
 	valid = true;
 }
@@ -381,7 +388,7 @@ void parseMetaTag(FileString& fullCode, size_t& currentLocale,
 		return;
 	}
 	readIdentifier(fullCode, currentLocale, tagId, tagIdLen);
-	metaTag.name = StringRef(&fullCode, tagId, tagIdLen);
+	metaTag.name = fullCode.substr(tagId, tagIdLen);
 	metaTag.type = Tag::TAG_META;
 	eatWhiteSpace(fullCode, currentLocale);
 	parseAttributes(fullCode, currentLocale, metaTag.attributes);
@@ -445,13 +452,13 @@ Tag::operator std::string() const
 
 	if (type == TAG_TEXT)
 	{
-		return name;
+		return static_cast<std::string>(*name);
 	}
 	else
 	{
 		if (type == TAG_NORMAL || type == TAG_META)
 		{
-			for (const std::pair<const StringRef, StringRef>& a : attributes)
+			for (const std::pair<const std::string, std::string>& a : attributes)
 			{
 				attrString += " " + static_cast<std::string>(a.first) + "=\"" +
 						static_cast<std::string>(a.second) + "\"";
@@ -464,10 +471,10 @@ Tag::operator std::string() const
 		}
 		if (type == TAG_NORMAL && children.size() > 0)
 		{
-			endString = "</" + static_cast<std::string>(name) + ">";
+			endString = "</" + static_cast<std::string>(*name) + ">";
 		}
 
-		beginString = tagOpening[type] + static_cast<std::string>(name) +
+		beginString = tagOpening[type] + static_cast<std::string>(*name) +
 				attrString +
 				(children.size() == 0 && type == TAG_NORMAL ? "/" : "") + 
 				tagClosing[type];

@@ -18,7 +18,7 @@ bool testRenderComment(void)
 	Tag commentTag;
 	std::string renderedTag;
 
-	commentTag.name = "This is a comment.";
+	commentTag.name = std::make_shared<StringLit>("This is a comment.");
 	commentTag.type = Tag::TAG_COMMENT;
 
 	renderedTag = (std::string)commentTag;
@@ -31,7 +31,7 @@ bool testRenderMeta(void)
 	Tag metaTag;
 	std::string renderedTag;
 
-	metaTag.name = "This is a meta tag.";
+	metaTag.name = std::make_shared<StringLit>("This is a meta tag.");
 	metaTag.type = Tag::TAG_META;
 
 	renderedTag = (std::string)metaTag;
@@ -44,7 +44,7 @@ bool testRenderMetaWithAttribute(void)
 	Tag metaTag;
 	std::string renderedTag;
 
-	metaTag.name = "xml";
+	metaTag.name = std::make_shared<StringLit>("xml");
 	metaTag.type = Tag::TAG_META;
 	metaTag.attributes.emplace(Attribute("version", "1.0"));
 
@@ -58,7 +58,7 @@ bool testRenderMetaWithAttributes(void)
 	Tag metaTag;
 	std::string renderedTag;
 
-	metaTag.name = "xml";
+	metaTag.name = std::make_shared<StringLit>("xml");
 	metaTag.type = Tag::TAG_META;
 	metaTag.attributes.emplace(Attribute("version", "1.0"));
 	metaTag.attributes.emplace(Attribute("encoding", "UTF-8"));
@@ -74,7 +74,8 @@ bool testRenderText(void)
 	std::string renderedTag;
 
 	textTag.type = Tag::TAG_TEXT;
-	textTag.name = "The quick brown fox jumped over the lazy dogs.";
+	textTag.name = std::make_shared<StringLit>("The quick brown fox jumped over "
+			"the lazy dogs.");
 	
 	renderedTag = (std::string)textTag;
 	TEST_FINALIZE(renderedTag, "The quick brown fox jumped over the lazy dogs.");
@@ -85,7 +86,7 @@ bool testRenderNormal(void)
 	Tag normalTag;
 	std::string renderedTag;
 
-	normalTag.name = "foo";
+	normalTag.name = std::make_shared<StringLit>("foo");
 	normalTag.type = Tag::TAG_NORMAL;
 
 	renderedTag = (std::string)normalTag;
@@ -98,7 +99,7 @@ bool testRenderNormalWithAttribute(void)
 	std::string renderedTag;
 
 	t.type = Tag::TAG_NORMAL;
-	t.name = "foo";
+	t.name = std::make_shared<StringLit>("foo");
 	t.attributes.emplace(Attribute("bar", "baz"));
 
 	renderedTag = (std::string)t;
@@ -111,7 +112,7 @@ bool testRenderNormalWithAttributes(void)
 	std::string renderedTag;
 
 	t.type = Tag::TAG_NORMAL;
-	t.name = "foo";
+	t.name = std::make_shared<StringLit>("foo");
 	t.attributes.emplace(Attribute("bar", "baz"));
 	t.attributes.emplace(Attribute("fizz", "buzz"));
 
@@ -126,9 +127,9 @@ bool testRenderNormalWithChild(void)
 	std::string renderedTag;
 
 	t.type = Tag::TAG_NORMAL;
-	t.name = "foo";
+	t.name = std::make_shared<StringLit>("foo");
 	ct.type = Tag::TAG_TEXT;
-	ct.name = "bar";
+	ct.name = std::make_shared<StringLit>("bar");
 	t.children.push_back(ct);
 
 	renderedTag = (std::string)t;
@@ -143,11 +144,11 @@ bool testRenderNormalWithChildren(void)
 	std::string renderedTag;
 
 	t.type = Tag::TAG_NORMAL;
-	t.name = "foo";
+	t.name = std::make_shared<StringLit>("foo");
 	ct.type = Tag::TAG_TEXT;
-	ct.name = "bar";
+	ct.name = std::make_shared<StringLit>("bar");
 	ctt.type = Tag::TAG_NORMAL;
-	ctt.name = "baz";
+	ctt.name = std::make_shared<StringLit>("baz");
 	t.children.push_back(ct);
 	t.children.push_back(ctt);
 
@@ -163,13 +164,13 @@ bool testRenderNormalWithAttributesAndChildren(void)
 	std::string renderedTag;
 
 	t.type = Tag::TAG_NORMAL;
-	t.name = "foo";
+	t.name = std::make_shared<StringLit>("foo");
 	t.attributes.emplace(Attribute("one", "1"));
 	t.attributes.emplace(Attribute("two", "2"));
 	ct.type = Tag::TAG_TEXT;
-	ct.name = "bar";
+	ct.name = std::make_shared<StringLit>("bar");
 	ctt.type = Tag::TAG_NORMAL;
-	ctt.name = "baz";
+	ctt.name = std::make_shared<StringLit>("baz");
 	ctt.attributes.emplace(Attribute("one", "1"));
 	ctt.attributes.emplace(Attribute("two", "2"));
 	t.children.push_back(ct);

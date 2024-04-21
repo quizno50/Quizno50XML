@@ -2,17 +2,34 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <memory>
+#include <mutex>
+
+StringT::StringT() { }
+StringT::~StringT() { }
+StringT::operator std::string() { 
+	return "";
+}
+
+StringLit::StringLit() : _lit("") { }
+StringLit::~StringLit() { }
+StringLit::StringLit(std::string const& nv) : _lit(nv) { }
+StringLit::StringLit(StringRef& ref) : _lit(static_cast<std::string>(ref)) { }
+StringLit::operator std::string() {
+	return _lit;
+}
 
 StringRef::StringRef() : _fs(nullptr), _start(0), _len(0) {}
+StringRef::~StringRef() {}
 StringRef::StringRef(FileString* fs, size_t s, size_t l) {
 	_fs = fs;
 	_start = s;
 	_len = l;
 }
 
-StringRef::operator std::string() const {
+StringRef::operator std::string() {
 	if (_fs != nullptr) {
-		return _fs->substr(_start, _len);
+		return *_fs->substr(_start, _len);
 	} else { 
 		return "";
 	}
@@ -26,6 +43,13 @@ bool StringRef::operator==(StringRef const& rhs) const {
 	return _fs == rhs._fs and _start == rhs._start and _len == rhs._len;
 }
 
+bool StringRef::operator<(std::string const& rhs) {
+	return static_cast<std::string>(*this) < rhs;
+}
+
+bool StringRef::operator==(std::string const& rhs) {
+	return static_cast<std::string>(*this) == rhs;
+}
 
 FileString::FileString(const std::string& filename)
 {
@@ -45,12 +69,13 @@ FileString::FileString(const std::string& filename)
 	}
 }
 
-std::string FileString::substr(size_t pos, size_t len)
+std::shared_ptr<StringT> FileString::substr(size_t pos, size_t len)
 {
 	char* buffer = nullptr;
 	size_t blkNum = pos / 8192;
 	size_t nextBlock = (blkNum + 1) * 8192;
 	std::string retStr;
+	std::lock_guard<std::mutex> doingIo(_io_mtx);
 
 	if (pos < 0 || len < 0)
 	{
@@ -93,7 +118,7 @@ std::string FileString::substr(size_t pos, size_t len)
 		delete[] buffer;
 	}
 
-	return retStr;
+	return std::make_shared<StringLit>(retStr);
 }
 
 size_t FileString::length(void) const
@@ -107,7 +132,7 @@ size_t FileString::find_first_of(const char* ok,
 	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
-		std::string buf = this->substr(pos, 8192);
+		std::string buf = *this->substr(pos, 8192);
 		result = buf.find_first_of(ok);
 		if (result == std::string::npos)
 		{
@@ -124,7 +149,7 @@ size_t FileString::find_first_not_of(const char* notOk,
 	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
-		std::string buf = this->substr(pos, 8192);
+		std::string buf = *this->substr(pos, 8192);
 		result = buf.find_first_not_of(notOk);
 		if (result == std::string::npos)
 		{
@@ -141,7 +166,7 @@ size_t FileString::find(const char* toFind,
 	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
-		std::string buf = this->substr(pos, 8192);
+		std::string buf = *this->substr(pos, 8192);
 		result = buf.find(toFind);
 		if (result == std::string::npos)
 		{
@@ -157,7 +182,7 @@ size_t FileString::find(char toFind, size_t startPosition)
 	size_t result = std::string::npos, pos = startPosition;
 	while (result == std::string::npos && pos < filesize)
 	{
-		std::string buf = this->substr(pos, 8192);
+		std::string buf = *this->substr(pos, 8192);
 		result = buf.find(toFind);
 		if (result == std::string::npos)
 		{
@@ -171,6 +196,6 @@ size_t FileString::find(char toFind, size_t startPosition)
 
 char FileString::operator[](size_t offset)
 {
-	return this->substr(offset, 1)[0];
+	return static_cast<std::string>(*this->substr(offset, 1))[0];
 }
 

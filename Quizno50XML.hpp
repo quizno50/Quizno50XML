@@ -17,40 +17,56 @@ class NavigationError : public XMLError
 	protected:
 };
 
-typedef std::pair<StringRef, StringRef> Attribute;
+typedef std::pair<std::string, std::string> Attribute;
 
 class Tag
 {
 	public:
-		Tag();
-		std::vector<Tag> children;
-		std::map<StringRef, StringRef> attributes;
-		StringRef name;
-		Tag& operator/(const std::string& subTag);
-		operator std::string() const;
 		enum TagType {
 			TAG_META,
 			TAG_COMMENT,
 			TAG_TEXT,
-			TAG_NORMAL } type;
+			TAG_NORMAL };
+
+		Tag();
+		virtual ~Tag();
+		Tag(TagType t) : type(t) { }
+		std::vector<Tag> children;
+		std::map<std::string, std::string> attributes;
+		std::shared_ptr<StringT> name;
+		virtual Tag& operator/(const std::string& subTag);
+		virtual operator std::string() const;
+		TagType type;
+};
+
+class NormalTag : public Tag
+{
+	public:
+		NormalTag() : Tag(TAG_NORMAL) { }
+};
+
+class MetaTag : public Tag
+{
+	public:
+		MetaTag() : Tag(TAG_META) { }
+};
+
+class CommentTag : public Tag
+{
+	public:
+		CommentTag() : Tag(TAG_COMMENT) { }
+};
+
+class TextTag : public Tag
+{
+	public:
+		TextTag() : Tag(TAG_TEXT) { }
 };
 
 class Document
 {
 	public:
 		std::vector<Tag> tags;
-};
-
-class MetaTag : public Tag
-{
-};
-
-class CommentTag : public Tag
-{
-};
-
-class TextNode : public Tag
-{
 };
 
 class ParseError : public XMLError
@@ -74,7 +90,7 @@ class ParseError : public XMLError
 		long location;
 };
 
-void parseDocument(FileString& fullCode, long& currentLocale,
+void parseDocument(FileString& fullCode, size_t& currentLocale,
 		Document& d);
 size_t countTagChildren(const Tag& t);
 size_t countDocumentTags(const Document& d);
